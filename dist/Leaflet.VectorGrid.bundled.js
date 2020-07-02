@@ -2149,6 +2149,8 @@ var FillSymbolizer = L.Polygon.extend({
  * Extends Leaflet's `L.GridLayer`.
  */
 
+var layerFeatures = [];
+
 L.VectorGrid = L.GridLayer.extend({
 
 	options: {
@@ -2202,7 +2204,7 @@ L.VectorGrid = L.GridLayer.extend({
 		var tileSize = this.getTileSize();
 		var renderer = this.options.rendererFactory(coords, tileSize, this.options);
 
-		var tileBounds = this._tileCoordsToBounds(coords);	
+		var tileBounds = this._tileCoordsToBounds(coords);
 
 		var vectorTilePromise = this._getVectorTilePromise(coords, tileBounds);
 
@@ -2218,16 +2220,18 @@ L.VectorGrid = L.GridLayer.extend({
 				for (var layerName in vectorTile.layers) {
 					this._dataLayerNames[layerName] = true;
 					var layer = vectorTile.layers[layerName];
-	
+
 					var pxPerExtent = this.getTileSize().divideBy(layer.extent);
-	
+
 					var layerStyle = this.options.vectorTileLayerStyles[ layerName ] ||
 					L.Path.prototype.options;
-	
+
 					for (var i = 0; i < layer.features.length; i++) {
 						var feat = layer.features[i];
 						var id;
-	
+
+						layerFeatures.push(feat);
+
 						if (this.options.filter instanceof Function &&
 							!this.options.filter(feat.properties, coords.z)) {
 							continue;
@@ -2245,31 +2249,31 @@ L.VectorGrid = L.GridLayer.extend({
 								}
 							}
 						}
-	
+
 						if (styleOptions instanceof Function) {
 							styleOptions = styleOptions(feat.properties, coords.z);
 						}
-	
+
 						if (!(styleOptions instanceof Array)) {
 							styleOptions = [styleOptions];
 						}
-	
+
 						if (!styleOptions.length) {
 							continue;
 						}
-	
+
 						var featureLayer = this._createLayer(feat, pxPerExtent);
-	
+
 						for (var j = 0; j < styleOptions.length; j++) {
 							var style = L.extend({}, L.Path.prototype.options, styleOptions[j]);
 							featureLayer.render(renderer, style);
 							renderer._addPath(featureLayer);
 						}
-	
+
 						if (this.options.interactive) {
 							featureLayer.makeInteractive();
 						}
-	
+
 						if (storeFeatures) {
 							// multiple features may share the same id, add them
 							// to an array of features
@@ -2283,20 +2287,26 @@ L.VectorGrid = L.GridLayer.extend({
 							});
 						}
 					}
-	
+
 				}
-	
+
 			}
-		
+
 			if (this._map != null) {
 				renderer.addTo(this._map);
 			}
-	
+
 			L.Util.requestAnimFrame(done.bind(coords, null, null));
 
 		}.bind(this));
 
 		return renderer.getContainer();
+	},
+
+	// 🍂method getFeatures(): any[]
+	// Returns a list of all the layer features
+	getFeatures: function() {
+		return layerFeatures;
 	},
 
 	// 🍂method setFeatureStyle(id: Number, layerStyle: L.Path Options): this
